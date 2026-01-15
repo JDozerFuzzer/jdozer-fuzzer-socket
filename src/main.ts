@@ -1,9 +1,9 @@
 import { NestFactory } from '@nestjs/core';
-import { JDozerFuzzerModule } from './jdozer/fuzzer/service/gateway/JDozerFuzzerGatewayModule';
+import { JDozerFuzzerGatewayModule } from './jdozer/fuzzer/service/gateway/JDozerFuzzerGatewayModule';
 import { IoAdapter } from '@nestjs/platform-socket.io';
 
 async function bootstrap() {
-  const app = await NestFactory.create(JDozerFuzzerModule);
+  const app = await NestFactory.create(JDozerFuzzerGatewayModule);
 
   app.useWebSocketAdapter(new IoAdapter(app));
 
