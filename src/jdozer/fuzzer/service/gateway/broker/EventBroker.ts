@@ -10,6 +10,7 @@ export class EventBroker implements OnModuleInit, OnModuleDestroy {
     private pubClient: Redis;
     private subClient: Redis;
     private subEngine: Redis;
+    private subProcessor: Redis;
 
     constructor(@InjectRedis() private readonly redis: Redis, private eventEmitter: EventEmitter2) {
         this.log.log('EventBroker initialized');
@@ -19,13 +20,16 @@ export class EventBroker implements OnModuleInit, OnModuleDestroy {
         this.pubClient.disconnect();
         this.subClient.disconnect();
         this.subEngine.disconnect();
+        this.subProcessor.disconnect();
     }
     onModuleInit() {
         this.pubClient = this.redis.duplicate();
         this.subClient = this.redis.duplicate();
         this.subEngine = this.redis.duplicate();
+        this.subProcessor = this.redis.duplicate();
         this.setupSubscriptions();
         this.setupEngineSubscriptions();
+        this.setupProcessorSubscriptions();
     }
 
     private async setupSubscriptions() {
@@ -40,7 +44,28 @@ export class EventBroker implements OnModuleInit, OnModuleDestroy {
                 this.eventEmitter.emit(`redis.${channel}`, {
                     channel: channel,
                     message: data,
-                    timestamp: new Date().toISOString()
+                    timestamp: new Date().getTime()
+                });
+            } catch (e) {
+                this.log.error(`Error parsing message: ${message}`);
+            }
+        });
+    }
+
+    private async setupProcessorSubscriptions() {
+        const channel: string = process.env.FUZZER_PROCESSOR_CHANNEL || 'jdozer:fuzzer:processor';
+        this.subProcessor.subscribe(channel);
+        this.log.log(`Subscribed to ${channel}`);
+
+        this.subProcessor.on('message', (channel: string, message: string) => {
+            this.log.verbose(`Received message on channel ${channel}: ${message}`);
+            try {
+                const event: any = JSON.parse(message);
+                this.eventEmitter.emit(`redis.${channel}`, {
+                    channel: channel,
+                    message: event,
+                    data: event.data,
+                    timestamp: new Date().getTime()
                 });
             } catch (e) {
                 this.log.error(`Error parsing message: ${message}`);
@@ -60,7 +85,7 @@ export class EventBroker implements OnModuleInit, OnModuleDestroy {
                 this.eventEmitter.emit(`redis.${channel}`, {
                     channel: channel,
                     message: data,
-                    timestamp: new Date().toISOString()
+                    timestamp: new Date().getTime()
                 });
             } catch (e) {
                 this.log.error(`Error parsing message: ${message}`);
