@@ -2,6 +2,8 @@ import { InjectRedis } from "@nestjs-modules/ioredis";
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from "@nestjs/common";
 import { Redis } from "ioredis";
 import { EventEmitter2 } from "@nestjs/event-emitter";
+import { ProcessorEvent } from "./ProcessorEvent";
+import { Channels } from "./Channels";
 @Injectable()
 export class EventBroker implements OnModuleInit, OnModuleDestroy {
 
@@ -27,8 +29,8 @@ export class EventBroker implements OnModuleInit, OnModuleDestroy {
         this.subClient = this.redis.duplicate();
         this.subEngine = this.redis.duplicate();
         this.subProcessor = this.redis.duplicate();
-        this.setupSubscriptions();
-        this.setupEngineSubscriptions();
+        //this.setupSubscriptions();
+        // this.setupEngineSubscriptions();
         this.setupProcessorSubscriptions();
     }
 
@@ -38,7 +40,7 @@ export class EventBroker implements OnModuleInit, OnModuleDestroy {
         this.log.log(`Subscribed to ${channel}`);
 
         this.subClient.on('message', (channel: string, message: string) => {
-            this.log.debug(`Received message on channel ${channel}: ${message}`);
+            this.log.debug(`[setupSubscriptions] Received message on channel ${channel}: ${message}`);
             try {
                 const data = JSON.parse(message);
                 this.eventEmitter.emit(`redis.${channel}`, {
@@ -47,28 +49,22 @@ export class EventBroker implements OnModuleInit, OnModuleDestroy {
                     timestamp: new Date().getTime()
                 });
             } catch (e) {
-                this.log.error(`Error parsing message: ${message}`);
+                this.log.error(`[setupSubscriptions] Error parsing message: ${message}`);
             }
         });
     }
 
     private async setupProcessorSubscriptions() {
-        const channel: string = process.env.FUZZER_PROCESSOR_CHANNEL || 'jdozer:fuzzer:processor';
+        const channel: string = process.env.FUZZER_PROCESSOR_CHANNEL || 'fuzzer:processor';
         this.subProcessor.subscribe(channel);
-        this.log.log(`Subscribed to ${channel}`);
+        this.log.log(`[setupProcessorSubscriptions] Subscribed to ${channel}`);
 
         this.subProcessor.on('message', (channel: string, message: string) => {
-            this.log.verbose(`Received message on channel ${channel}: ${message}`);
+            this.log.verbose(`[setupProcessorSubscriptions] Received message on channel ${channel}: ${message}`);
             try {
-                const event: any = JSON.parse(message);
-                this.eventEmitter.emit(`redis.${channel}`, {
-                    channel: channel,
-                    message: event,
-                    data: event.data,
-                    timestamp: new Date().getTime()
-                });
+                this.eventEmitter.emit(Channels.EVENT_RUNNING, message);
             } catch (e) {
-                this.log.error(`Error parsing message: ${message}`);
+                this.log.error(`[setupProcessorSubscriptions] Error parsing message: ${message}`);
             }
         });
     }
@@ -79,7 +75,11 @@ export class EventBroker implements OnModuleInit, OnModuleDestroy {
         this.log.log(`Subscribed to ${channel}`);
 
         this.subEngine.on('message', (channel: string, message: string) => {
-            this.log.debug(`Received message on channel ${channel}: ${message}`);
+            this.log.debug(`[setupEngineSubscriptions] Received message on channel ${channel}: ${message}`);
+
+
+
+
             try {
                 const data = JSON.parse(message);
                 this.eventEmitter.emit(`redis.${channel}`, {
@@ -88,12 +88,13 @@ export class EventBroker implements OnModuleInit, OnModuleDestroy {
                     timestamp: new Date().getTime()
                 });
             } catch (e) {
-                this.log.error(`Error parsing message: ${message}`);
+                this.log.error(`[setupEngineSubscriptions] Error parsing message: ${message}`);
             }
         });
     }
 
     public async publish(channel: string, message: any): Promise<number> {
+        this.log.debug(`[publish] Publishing message on channel ${channel}: ${message}`);
         return this.pubClient.publish(channel, JSON.stringify(message));
     }
 

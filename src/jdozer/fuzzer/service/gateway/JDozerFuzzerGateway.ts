@@ -3,6 +3,7 @@ import { OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit, SubscribeMessa
 import { Server, Socket } from 'socket.io';
 import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
 import { EventBroker } from './broker/EventBroker';
+import { Channels } from './broker/Channels';
 
 
 @WebSocketGateway({
@@ -57,6 +58,12 @@ export class JdozerFuzzerGateway implements OnGatewayInit, OnGatewayConnection, 
   public async handlerEngineEvent(data: any) {
     this.log.debug(`Received message on channel jdozer:fuzzer:engine: ${data}`);
     this.broadcastMessage('message', data);
+  }
+
+  @OnEvent(Channels.EVENT_RUNNING, { async: true })
+  public async handlerProcessorEvent(event: any) {
+    this.log.debug(`Received message on channel ${Channels.EVENT_RUNNING}: ${event}`);
+    this.broadcastMessage(Channels.EVENT_RUNNING, event);
   }
 
 }
