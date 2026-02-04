@@ -14,6 +14,7 @@ export class EventBroker implements OnModuleInit, OnModuleDestroy {
     private subEngine: Redis;
     private subProcessor: Redis;
     private subSeeder: Redis;
+    private subVectors: Redis;
 
     constructor(@InjectRedis() private readonly redis: Redis, private eventEmitter: EventEmitter2) {
         this.log.log('EventBroker initialized');
@@ -32,11 +33,28 @@ export class EventBroker implements OnModuleInit, OnModuleDestroy {
         this.subEngine = this.redis.duplicate();
         this.subProcessor = this.redis.duplicate();
         this.subSeeder = this.redis.duplicate();
+        this.subVectors = this.redis.duplicate();
 
         //this.setupSubscriptions();
         // this.setupEngineSubscriptions();
         this.setupProcessorSubscriptions();
         this.setupSeederSubscriptions();
+        this.setupVectorsSubscriptions();
+    }
+
+    private async setupVectorsSubscriptions() {
+        const channel: string = process.env.FUZZER_VECTORS_CHANNEL || 'fuzzer:vectors';
+        this.subVectors.subscribe(channel);
+        this.log.log(`Subscribed to ${channel}`);
+
+        this.subVectors.on('message', (channel: string, message: string) => {
+            this.log.verbose(`[setupVectorsSubscriptions] Received message on channel ${channel}: ${message}`);
+            try {
+                this.eventEmitter.emit(Channels.EVENT_RUNNING, message);
+            } catch (e) {
+                this.log.error(`[setupVectorsSubscriptions] Error parsing message: ${message}`);
+            }
+        });
     }
 
     private async setupSeederSubscriptions() {
