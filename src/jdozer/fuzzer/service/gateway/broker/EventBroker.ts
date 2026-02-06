@@ -36,7 +36,7 @@ export class EventBroker implements OnModuleInit, OnModuleDestroy {
         this.subVectors = this.redis.duplicate();
 
         //this.setupSubscriptions();
-        // this.setupEngineSubscriptions();
+        this.setupEngineSubscriptions();
         this.setupProcessorSubscriptions();
         this.setupSeederSubscriptions();
         this.setupVectorsSubscriptions();
@@ -108,23 +108,14 @@ export class EventBroker implements OnModuleInit, OnModuleDestroy {
     }
 
     private async setupEngineSubscriptions() {
-        const channel: string = process.env.FUZZER_ENGINE_CHANNEL || 'jdozer:fuzzer:engine';
+        const channel: string = process.env.FUZZER_ENGINE_CHANNEL || 'fuzzer:engine';
         this.subEngine.subscribe(channel);
         this.log.log(`Subscribed to ${channel}`);
 
         this.subEngine.on('message', (channel: string, message: string) => {
             this.log.debug(`[setupEngineSubscriptions] Received message on channel ${channel}: ${message}`);
-
-
-
-
             try {
-                const data = JSON.parse(message);
-                this.eventEmitter.emit(`redis.${channel}`, {
-                    channel: channel,
-                    message: data,
-                    timestamp: new Date().getTime()
-                });
+                this.eventEmitter.emit(Channels.EVENT_RUNNING, message);
             } catch (e) {
                 this.log.error(`[setupEngineSubscriptions] Error parsing message: ${message}`);
             }
