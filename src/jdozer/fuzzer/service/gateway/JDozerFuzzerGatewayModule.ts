@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 import { JdozerFuzzerGateway } from "./JDozerFuzzerGateway";
 import { EventBrokerModule } from "./broker/EventBrokerModule";
 import { EventEmitterModule } from "@nestjs/event-emitter";
+import { BffModule } from "../../bff/BffModule";
 
 
 @Module({
@@ -11,7 +12,7 @@ import { EventEmitterModule } from "@nestjs/event-emitter";
         maxListeners: 10,
         verboseMemoryLeak: true,
         ignoreErrors: false
-    })],
+    }), BffModule],
     providers: [JdozerFuzzerGateway]
 })
 export class JDozerFuzzerGatewayModule { }
